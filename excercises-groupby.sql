@@ -54,15 +54,19 @@ INSERT INTO grades (student_id, course_id, grade, grade_date) VALUES
 (4, 4, 81.0, '2025-02-15');
 
 SELECT 
-    groups.year_of_study,
-    COUNT(DISTINCT students.student_id) AS number_of_students,
+    groups.year_of_study AS study_year,
+    students.student_name AS student_name,
+    COUNT(grades.grade_id) AS grades_count,
     ROUND(AVG(grades.grade), 2) AS average_score,
-    ROUND(COUNT(CASE WHEN grades.grade >= 60 THEN 1 END) * 100.0 / COUNT(grades.grade), 2) AS success_rate
-FROM groups
-JOIN students ON groups.group_id = students.group_id
+    CASE 
+        WHEN AVG(grades.grade) >= 60 THEN 'Успішно'
+        ELSE 'Неуспішно'
+    END AS status
+FROM students
+JOIN groups ON students.group_id = groups.group_id
 JOIN grades ON students.student_id = grades.student_id
-GROUP BY groups.year_of_study
-ORDER BY groups.year_of_study;
+GROUP BY groups.year_of_study, students.student_id, students.student_name
+ORDER BY groups.year_of_study, average_score DESC;
 
 
 
