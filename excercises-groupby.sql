@@ -1,24 +1,24 @@
 CREATE TABLE IF NOT EXISTS groups (
-    group_id INT PRIMARY KEY AUTO_INCREMENT,
+    group_id SERIAL PRIMARY KEY,
     group_name VARCHAR(50) NOT NULL,
     year_of_study INT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS students (
-    student_id INT PRIMARY KEY AUTO_INCREMENT,
+    student_id SERIAL PRIMARY KEY,
     student_name VARCHAR(100) NOT NULL,
     group_id INT,
     FOREIGN KEY (group_id) REFERENCES groups(group_id)
 );
 
 CREATE TABLE IF NOT EXISTS courses (
-    course_id INT PRIMARY KEY AUTO_INCREMENT,
+    course_id SERIAL PRIMARY KEY,
     course_name VARCHAR(100) NOT NULL,
     year_of_study INT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS grades (
-    grade_id INT PRIMARY KEY AUTO_INCREMENT,
+    grade_id SERIAL PRIMARY KEY,
     student_id INT NOT NULL,
     course_id INT NOT NULL,
     grade DECIMAL(5,2) CHECK (grade >= 0 AND grade <= 100),
@@ -57,12 +57,14 @@ SELECT
     groups.year_of_study,
     COUNT(DISTINCT students.student_id) AS number_of_students,
     ROUND(AVG(grades.grade), 2) AS average_score,
-    ROUND(COUNT(CASE WHEN grades.grade >= 60 THEN 1 END) * 100.0 / COUNT(grades.grade), 2) AS success_rate,
+    ROUND(COUNT(CASE WHEN grades.grade >= 60 THEN 1 END) * 100.0 / COUNT(grades.grade), 2) AS success_rate
 FROM groups
 JOIN students ON groups.group_id = students.group_id
 JOIN grades ON students.student_id = grades.student_id
 GROUP BY groups.year_of_study
 ORDER BY groups.year_of_study;
+
+
 
 WITH averagescore_student AS (
     SELECT 
@@ -70,12 +72,10 @@ WITH averagescore_student AS (
         students.student_name,
         groups.group_name,
         groups.year_of_study,
-        ROUND(AVG(grades.grade), 2) AS average_
-score_student
+        ROUND(AVG(grades.grade), 2) AS average_score_student
     FROM students
     JOIN groups ON students.group_id = groups.group_id
-    LEFT JOIN grades ON students.student_id = grades.student_id
-    WHERE grades.grade IS NOT NULL
+    JOIN grades ON students.student_id = grades.student_id
     GROUP BY students.student_id, students.student_name, groups.group_name, groups.year_of_study
 ),
 averagescore_group AS (
@@ -86,28 +86,26 @@ averagescore_group AS (
     FROM students
     JOIN groups ON students.group_id = groups.group_id
     JOIN grades ON students.student_id = grades.student_id
-    WHERE grades.grade IS NOT NULL
     GROUP BY groups.year_of_study, groups.group_name
 )
 SELECT 
-    average_score_student.student_id,
-    average_score_student.student_name,
-    average_score_student.group_name,
-    average_score_student.year_of_study,
-    average_score_student.average_score_student,
-    average_score_group.average_score_group,
-    ROUND(average_score_student.average_score_student - average_score_group.average_score_group, 2) AS різниця
-FROM averagescore_student
-JOIN averagescore_group ON averagescore_student.year_of_study = averagescore_group.year_of_study 
-                  AND average_score_student.group_name = average_score_group.group_name
-ORDER BY averagescore_student.year_of_study, averagescore_student.averagescore_student DESC;
-            score_group.group_name
-ORDER BY averagescore_student.year_of_study, averagescore_student.averagescore_student DESC;
+    ast.student_id,
+    ast.student_name,
+    ast.group_name,
+    ast.year_of_study,
+    ast.average_score_student,
+    ag.average_score_group,
+    ROUND(ast.average_score_student - ag.average_score_group, 2) AS difference
+FROM averagescore_student ast
+JOIN averagescore_group ag ON ast.year_of_study = ag.year_of_study 
+                  AND ast.group_name = ag.group_name
+ORDER BY ast.year_of_study, ast.average_score_student DESC;
+
 
 SELECT 
     groups.year_of_study,
     COUNT(DISTINCT courses.course_id) AS number_of_courses,
-    COUNT(grades.grade_id) AS number_of_grades,
+    COUNT(grades.grade_id) AS number_of_ratings,
     COUNT(DISTINCT CASE WHEN grades.grade IS NOT NULL THEN students.student_id END) AS students_with_grades,
     COUNT(DISTINCT students.student_id) AS total_students
 FROM groups
